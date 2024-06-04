@@ -1,0 +1,296 @@
+---
+title: "Notes"
+format: pdf
+---
+
+# Mediation and Moderated Mediation Analysis
+
+The *mediator* represents the generative mechansism through which the treatment is able to influence the outcome. The goal of mediation is to decompose the total treatment effect of a predictor on an outcome into indirect effects transmitted through the hypothesized mediators and direct effects representing the contribution of other unspecified pathways.
+
+$$
+M = \beta^m_0 + \beta^m_t T + \epsilon_M \\
+Y = \beta^y_0 + \beta^y_t T + \beta^y_m M + \epsilon_y \\
+$$
+
+where T stands for a treatment, M stands for a mediator, and Y stands for an outcome. The indirect effect is provided by $\beta^m_t \space \beta^y_m$ and the direct effect is provided by $\beta^y_t$.
+
+There are some limitations of the traditional path analysis approach are that the models tend to omit confounders and ignore common treatment-by-mediator interactions.
+
+Mediation tells us more about the "how" and moderation analysis tells us more about the "for whom" or "where". *Moderated mediation analysis focuses on the heterogeneity of the mechanism.* Mediated moderation Analysis tries to explain the mechanism of the heterogeneity. We are focused on the former.
+
+We care about moderated mediation because it helps us understand for whom and under what contexts the intervention can be helpful.
+
+We are focused on pre-treatment (i.e., assumed not to be affected by the treatment, such as stable individual or contextual variables).
+
+Example from the National Study of Learning Mindset
+
+-   Treatment: Growth mindset intervention v. Control
+
+-   Mediator: Challenge-seeking behaviors
+
+-   Outcome: Math achievement
+
+-   Moderator: School achievement level
+
+# Potential Outcomes Framework
+
+Under the potential outcomes framework, every individual has a potential outcome corresponding to each level of the intervention, manipulation, or treatment. It is called "potential" because only one outcome is observed, depending on which level the individual is assigned to, while the outcomes under the other levels are counterfactual (i.e., observable).
+
+The causal effect can then be defined as a comparison of potential outcomes for the same unit.
+
+The notation $Y_i (1, M_i (0))$ indicates that the person, $Y_i$, has a treatment level of $T = 1$ and a mediator value that *would* occur *if* the treatment level were *instead* assigned to $T = 0$. Note that this can be a counterfactual and does not need to represent what actually occurred. In other words, $Y_i (1, M_i (0))$ represents the potential depression level (outcome) if assigned to LFA (T = 1), while the potential employment status (mediator) takes the value under the counterfactual control condition (T = 0).
+
+The indirect effect can then be defined by
+
+$$
+Y_i (1, M_i (1)) - Y_i (1, M_i (0)).
+$$
+
+This is called the natural indirect effect by Pearl (2001) or the total indirect effect by Robins and Greenland (1992).
+
+The direct effect can then be defined by
+
+$$
+Y_i (1, M_i (0)) - Y_i (0, M_i (0))
+$$
+
+which is also the natural direct effect or the pure direct effect.
+
+We can define two additional effects that are equivalent when there is *not* an interaction between the mediator and moderator.
+
+The pure indirect effect is given by
+
+$$ 
+Y_i (0, M_i (1)) - Y_i (0, M_i (0))
+$$
+
+and the total direct effect is given by
+
+$$ 
+Y_i (1, M_i (1)) - Y_i (0, M_i (1)).
+$$
+
+There are two decompositions. The first, which is more common, is given by
+
+$$ 
+Y_i (1, M_i (1)) - Y_i (0, M_i (0))
+$$
+
+which is decomposed into
+
+$$
+NIE (TIE) = Y_i (1, M_i (1)) - Y_i (1, M_i (0)) \\
+NDE (PDE) = Y_i (1, M_i (0)) - Y_i (0, M_i (0))
+$$
+
+where NIE stands for the natural indirect effect and NDE stands for natural direct effect.
+
+The second decomposition is given by
+
+$$ 
+PIE = Y_i (0, M_i (1)) - Y_i (0, M_i (0)) \\
+TDE = Y_i (1, M_i (1)) - Y_i (0, M_i (1))
+$$
+
+*The two decompositions are not equivalent when there is treatment by mediator interactions.* A natural treatment by mediator interation effect is defined as
+
+$$ 
+INT = TIE – PIE = TDE - PDE
+$$
+
+which leads to a total treatment effect of
+
+$$
+TE = PIE + PDE + INT.
+$$
+
+# Causal Mediation and Causal Moderated Mediation Analysis
+
+See slide 55...
+
+Averaging each individual-specific effect, $\delta_i$, over individuals within given levels of the moderators, $W$, we define the conditional average of each effect (including the TE, TIE, PDE, PIE, and TDE) as
+
+$$ 
+\delta_W = \mathrm{E} [\delta_i \bar W_i = w].
+$$
+
+Each moderated effect can be defined as a contrast of the conditional effect between subpopulations defined by two different levels of the moderators, $W$,
+
+$$
+\delta_{MOD} = \delta_{w_1} - \delta_{w_2}
+$$
+
+The models can be fitted using Monte Carlo or bootstrapping methods.
+
+# Sensitivity Analysis
+
+Strong ignorability of the treatment is guaranteed by random assignment. However, in non-experimental cases, we often violate this assumption. A sensitivity analysis is necessary for determining the influence of a potentail omitted confounder and how strong the influence of the confounder needs to be for the original conclusions (e.g., statistical significance) to be changed.
+
+If a confounder is observed, we simply compare the analysis before and after including the confounder. When the confounder is not observed, we use sensitivity parameters to imply departures from the identification assumptions. We then assess point estimates of the indirect and direct effects and standard errors as a function of the sensitivity parameters. The larger the magnitudes of the sensitivity parameters are are for removing the effects or changing their significance, the less sensitive the results are.
+
+The goal of a study is to understand what the estimates of the NIE and NDE would ahve been had we adjusted for an unmeasured confounder, $U$. To do this, we derive a conditional distribution of $U$ based on our assumptions about its prior distribution and its relationship with the oucome and the mediator. Given random draws of $U$ from its conditional distribution, we are able to estimate NIE and NDE after the adjustment for $U$.
+
+# Implementation using R
+
+```{r}
+# load packages
+library(here)
+library(parallel)
+library(moderate.mediation)
+
+# load two datasets
+jobs <- read.csv(
+  paste0(here(), "/materials/jobs.csv")
+)
+
+data(newws)
+```
+
+Key Variables (in **newws**):
+
+-   **treat**: treatment
+
+-   **emp**: mediator
+
+-   **depression**: outcome
+
+-   **ADCPC**: moderator (baseline welware)
+
+-   **CHCNT**: moderator (baseline number of children)
+
+```{r}
+results = modmed(
+  data = newws,
+  treatment = "treat",
+  mediator = "emp",
+  outcome = "depression",
+  covariates.disc = c("emp_prior", "nevmar", "hispanic", "nohsdip"),
+  covariates.cont = c("workpref", "attitude", "depress_prior"),
+  moderators.disc = "CHCNT",
+  moderators.cont = "ADCPC",
+  m.model = list(
+    intercept = c("ADCPC", "CHCNT"),
+    treatment = c("ADCPC", "CHCNT"),
+    emp_prior = NULL,
+    nevmar = NULL,
+    hispanic = NULL, 
+    nohsdip = NULL
+  ),
+  y.model = list(
+    intercept = c("ADCPC", "CHCNT"),
+    treatment = c("ADCPC", "CHCNT"),
+    mediator = c("ADCPC", "CHCNT"),
+    tm = NULL, 
+    emp_prior = NULL,
+    nevmar = NULL,
+    hispanic = NULL, 
+    nohsdip = NULL,
+    workpref = NULL,
+    attitude = NULL,
+    depress_prior = NULL
+  ),
+  comp.treatment.value = 1,
+  ref.treatment.value = 0,
+  comp.mod.disc.values = 3,
+  ref.mod.disc.values = 2, 
+  comp.mod.cont.values = 5050, 
+  ref.mod.cont.values = 5050, 
+  m.scale = "binary", 
+  y.scale = "continuous", 
+  method = "mc", 
+  nmc = 1000,
+  conf.level = 0.95, 
+  seed = 1
+  )
+
+summary(results)
+```
+
+
+
+
+
+## Exercises
+
+### Exercise 1
+
+Please run the moderated mediation analysis by completing the following code.
+
+```{r}
+results = modmed(data = jobs, 
+                 treatment = "treat", 
+                 mediator = "job_seek", 
+                 outcome = "depress2", 
+                 covariates.disc = "sex",
+                 covariates.cont = c("age", "depress1"), 
+                 moderators.cont = "econ_hard", 
+                 m.model = list(
+                       intercept = "econ_hard",
+                       treatment = "econ_hard",
+                       sex = NULL,
+                       age = NULL,
+                       depress1 = NULL 
+                       ), 
+                 y.model = list(
+                   intercept = "econ_hard",
+                   treatment = "econ_hard",
+                   mediator = "econ_hard",
+                   tm = "econ_hard", 
+                   depress1 = NULL, 
+                   age = NULL, 
+                   sex = NULL
+                   ),
+                 comp.treatment.value = 1,
+                 ref.treatment.value = 0,
+                 comp.mod.cont.values = 5,
+                 ref.mod.cont.values = 1, 
+                 m.scale = "continuous", 
+                 y.scale = "continuous", 
+                 method = "mc", nmc = 1000,
+                 conf.level = 0.95, 
+                 seed = 1)
+
+summary(object = results) 
+```
+
+### Exercise 2
+
+Conduct a sensitivity analysis to evaluate whether TIE.ref and TIE.dif are sensitive to a potential violation of the identification assumption by completing the following code. For illustration purpose, please specify grid.b.m and grid.b.y to be 2. Their values need to be increased in real data analysis.
+
+Check the number of codes first, and specify ncore in modmed.sens() and modmed.plot() functions to be the total number of cores - 1. This is because at least one core should be saved to run other programs on the computer while you are running the R program.
+
+```{r}
+detectCores()
+
+sens.results = modmed.sens(object = ,
+                           sens.effect = c("", ""),
+                           range.b.m = NULL,
+                           range.b.y = NULL,
+                           grid.b.m = ,
+                           grid.b.y = ,
+                           U.scale = "binary",
+                           p.u = 0.5,
+                           t.rand = TRUE,
+                           t.model = NULL,
+                           t.scale = "binary",
+                           b.t = NULL,
+                           iter = 10,
+                           nsim = 5,
+                           ncore = )
+sens.plot(object = results,
+          sens.results = sens.results,
+          effect = "")
+```
+
+### Exercise 3
+
+Please visualize how the total indirect effect of the job training intervention on depression transmitted through job search self-efficacy varied by econ_hard by completing the following code.
+
+```{r}
+modmed.plot(object = results,
+            effect = "",
+            moderator = "",
+            is.dist.moderator = TRUE,
+            probs = c(0.1, 0.25, 0.5, 0.75, 0.9),
+            ncore = )
+```
